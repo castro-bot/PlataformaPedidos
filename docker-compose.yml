@@ -1,0 +1,13 @@
+services:
+  inventario:
+    build: ./inventario
+    ports:
+      - "3001:3001"
+  pedidos:
+    build: ./pedidos
+    ports:
+      - "3002:3002"
+    environment:
+      INVENTARIO_URL: http://inventario:3001
+    depends_on:
+      - inventario
