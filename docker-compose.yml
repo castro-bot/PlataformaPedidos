@@ -6,8 +6,9 @@ services:
   pedidos:
     build: ./pedidos
     ports:
-      - "3002:3002"
+      - "3000:3000"
     environment:
+      PORT: "3000"
       INVENTARIO_URL: http://inventario:3001
     depends_on:
       - inventario
