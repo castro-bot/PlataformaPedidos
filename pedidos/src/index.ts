@@ -4,6 +4,7 @@ import { Worker } from "node:worker_threads";
 import path from "node:path";
 import { contarPrimos } from "./calculo";
 import { medirLatencia, resumenMetricas } from "./metricas";
+import { contarPrimosEnPool, estadoPool } from "./pool";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const INVENTARIO_URL = process.env.INVENTARIO_URL ?? "http://localhost:3001";
@@ -28,7 +29,7 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.get("/metricas", (_req: Request, res: Response) => {
-    res.json(resumenMetricas());
+    res.json({ ...resumenMetricas(), pool: estadoPool() });
 });
 
 app.get("/pedidos", (_req: Request, res: Response) => {
@@ -142,6 +143,24 @@ app.get("/reporte/worker", async (req: Request, res: Response) => {
     const primos = await contarPrimosEnWorker(n);
     const duracionMs = Math.round(performance.now() - inicio);
     res.json({ modo: "worker", n, primos, duracionMs });
+});
+
+app.get("/reporte/pool", async (req: Request, res: Response) => {
+    const n = leerN(req);
+    const inicio = performance.now();
+    try {
+        const primos = await contarPrimosEnPool(n);
+        const duracionMs = Math.round(performance.now() - inicio);
+        res.json({ modo: "pool", n, primos, duracionMs });
+    } catch (error) {
+        const e = error as Error;
+        if (e.name === "PoolLleno") {
+            res.set("Retry-After", "1");
+            res.status(503).json({ error: e.message, name: e.name, pool: estadoPool() });
+            return;
+        }
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.listen(PORT, () => {
